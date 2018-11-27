@@ -1,13 +1,9 @@
 import React from "react";
-//import DatePicker from "react-datepicker";
 import "./index.css";
-//import moment from "moment";
-//import Dropdown from "react-dropdown";
-import "react-dropdown/style.css";
-import "react-datepicker/dist/react-datepicker.css";
 import ReactTable from "react-table";
 import "react-table/react-table.css";
 import axios from "axios";
+
 class Employee extends React.Component {
   constructor(props) {
     super(props);
@@ -19,14 +15,46 @@ class Employee extends React.Component {
     };
     this.getDesig = this.getDesig.bind(this);
     this.handleOriginal = this.handleOriginal.bind(this);
+    this.handleKeyPress = this.handleKeyPress.bind(this);
+  }
+
+  componentDidMount() {
+    this.setState({ isLoading: true }, () => {
+      axios
+        .get("https://spring-employee.herokuapp.com/employees")
+        .then(json =>
+          json.data._embedded.employees.map(result => ({
+            ID: result.empid,
+            Name: result.empname,
+            Skill: result.skill,
+            Salary: result.salary,
+            Grade: result.grade,
+            City: result.city,
+            Country: result.country,
+            DOJ: result.doj,
+            DeptName: result.deptid.deptname,
+            Designation: result.designation,
+            dep_link: result._links.deptid.href
+          }))
+        )
+
+        .then(newData =>
+          this.setState({ ...this.state, emp_data: newData, isLoading: false })
+        )
+
+        .catch(function(error) {
+          console.log(error);
+        });
+    });
   }
 
   getDesig(desig) {
+    console.log(desig);
     let url = `https://spring-employee.herokuapp.com/employees/search/bydesignation?designation=${desig}`;
     if (!desig || desig === "all") {
       url = "https://spring-employee.herokuapp.com/employees";
     }
-    console.log(url);
+
     return axios
       .get(url)
       .then(json =>
@@ -52,6 +80,57 @@ class Employee extends React.Component {
       });
   }
 
+  handleKeyPress(e) {
+    if (e.key === "Enter") {
+      let url = " ";
+      if (this.state.filterState.Name) {
+        url = `https://spring-employee.herokuapp.com/employees/search/byempname?empname=${
+          this.state.filterState.Name
+        }`;
+        //console.log(url);
+      } else if (this.state.filterState.Skill) {
+        url = `https://spring-employee.herokuapp.com/employees/search/byskill?skill=${
+          this.state.filterState.Skill
+        }`;
+      } else if (this.state.filterState.City) {
+        url = `https://spring-employee.herokuapp.com/employees/search/bycity?city=${
+          this.state.filterState.City
+        }`;
+      } else if (this.state.filterState.Country) {
+        url = `https://spring-employee.herokuapp.com/employees/search/bycountry?country=${
+          this.state.filterState.Country
+        }`;
+      } else {
+        url = "https://spring-employee.herokuapp.com/employees";
+      }
+      axios
+        .get(url)
+        .then(json =>
+          json.data._embedded.employees.map(result => ({
+            ID: result.empid,
+            Name: result.empname,
+            Skill: result.skill,
+            Salary: result.salary,
+            Grade: result.grade,
+            City: result.city,
+            Country: result.country,
+            DOJ: result.doj,
+            DeptName: result.deptid.deptname,
+            Designation: result.designation,
+            dep_link: result._links.deptid.href
+          }))
+        )
+        .then(newData =>
+          this.setState({ ...this.state, emp_data: newData, isLoading: false })
+        )
+        .catch(function(error) {
+          console.log(error);
+        });
+
+      return;
+    }
+  }
+
   handleOriginal(var2) {
     if (!this.state.dep_data[var2]) {
       axios
@@ -61,7 +140,6 @@ class Employee extends React.Component {
           this.setState({
             dep_data: { ...this.state.dep_data, [var2]: data1 }
           });
-          console.log(json);
         })
         .catch(function(error) {
           console.log(error);
@@ -80,14 +158,14 @@ class Employee extends React.Component {
           <ReactTable
             data={emp_data}
             filterable
-            defaultFilterMethod={(filter, row) =>
-              String(row[filter.id]) === filter.value
-            }
-            manual
+            manual={true}
             onFetchData={(state, instance) => {
-              this.getDesig(
-                this.state.filterState ? this.state.filterState.designation : ""
-              );
+              // console.log(instance);
+              if (instance.props.data.length !== 0) {
+                if (this.state.filterState.designation) {
+                  this.getDesig(this.state.filterState.designation);
+                }
+              }
             }}
             columns={[
               {
@@ -99,15 +177,53 @@ class Employee extends React.Component {
               {
                 Header: "Name",
                 accessor: "Name",
-                filterMethod: (filter, row) =>
-                  row[filter.id].startsWith(filter.value)
+                Filter: ({ filter, onChange }) => (
+                  <input
+                    type="text"
+                    size="8"
+                    onKeyPress={this.handleKeyPress}
+                    value={
+                      this.state.filterState.Name
+                        ? this.state.filterState.Name
+                        : ""
+                    }
+                    onChange={event => {
+                      this.setState({
+                        filterState: {
+                          ...this.state.filterState,
+                          Name: event.target.value
+                        }
+                      });
+                      onChange();
+                    }}
+                  />
+                )
               },
 
               {
                 Header: "Skill",
                 accessor: "Skill",
-                filterMethod: (filter, row) =>
-                  row[filter.id].startsWith(filter.value)
+                Filter: ({ filter, onChange }) => (
+                  <input
+                    type="text"
+                    size="8"
+                    onKeyPress={this.handleKeyPress}
+                    value={
+                      this.state.filterState.Skill
+                        ? this.state.filterState.Skill
+                        : ""
+                    }
+                    onChange={event => {
+                      this.setState({
+                        filterState: {
+                          ...this.state.filterState,
+                          Skill: event.target.value
+                        }
+                      });
+                      onChange();
+                    }}
+                  />
+                )
               },
               {
                 Header: "DOJ",
@@ -117,16 +233,10 @@ class Employee extends React.Component {
                 Header: "Designation",
                 accessor: "Designation",
                 minWidth: 110,
-                filterAll: true,
-
-                filterMethod: (filter, row) => {
-                  return [];
-                },
-
                 Filter: ({ filter, onChange }) => (
                   <select
                     value={
-                      this.state.filterState
+                      this.state.filterState.designation
                         ? this.state.filterState.designation || "all"
                         : "all"
                     }
@@ -171,20 +281,52 @@ class Employee extends React.Component {
               {
                 Header: "City",
                 accessor: "City",
-                filterMethod: (filter, row) =>
-                  row[filter.id].startsWith(filter.value)
+                Filter: ({ filter, onChange }) => (
+                  <input
+                    type="text"
+                    size="8"
+                    onKeyPress={this.handleKeyPress}
+                    value={
+                      this.state.filterState.City
+                        ? this.state.filterState.City
+                        : ""
+                    }
+                    onChange={event => {
+                      this.setState({
+                        filterByState: {
+                          ...this.state.filterState,
+                          City: event.target.value
+                        }
+                      });
+                      onChange();
+                    }}
+                  />
+                )
               },
               {
                 Header: "Country",
                 accessor: "Country",
-                filterMethod: (filter, row) =>
-                  row[filter.id].startsWith(filter.value)
-              }
-            ]}
-            defaultSorted={[
-              {
-                id: "Name",
-                desc: true
+                Filter: ({ filter, onChange }) => (
+                  <input
+                    type="text"
+                    size="8"
+                    onKeyPress={this.handleKeyPress}
+                    value={
+                      this.state.filterState.Country
+                        ? this.state.filterState.Country
+                        : ""
+                    }
+                    onChange={event => {
+                      this.setState({
+                        filterState: {
+                          ...this.state.filterState,
+                          Country: event.target.value
+                        }
+                      });
+                      onChange();
+                    }}
+                  />
+                )
               }
             ]}
             defaultPageSize={10}
@@ -218,11 +360,11 @@ class Employee extends React.Component {
                       <ul>
                         <li>Dep ID : {dep.deptid}</li>
                         <li>Dep Name : {dep.deptname}</li>
-                        <li>Dep Head : {dep.depthead.city}</li>
-                        <li>City : {dep.depthead.country}</li>
-                        <li>Country : {dep.depthead.designation}</li>
-                        <li>Designation : {dep.depthead.doj}</li>
-                        <li>DOJ : {dep.depthead.empname}</li>
+                        <li>Dep Head : {dep.depthead.empname}</li>
+                        <li>City : {dep.depthead.city}</li>
+                        <li>Country : {dep.depthead.country}</li>
+                        <li>Designation : {dep.depthead.designation}</li>
+                        <li>DOJ : {dep.depthead.doj}</li>
                         <li>Grade : {dep.depthead.grade}</li>
                         <li>Salary : {dep.depthead.salary}</li>
                         <li>Skill : {dep.depthead.skill}</li>
@@ -264,4 +406,3 @@ class Employee extends React.Component {
 }
 
 export default Employee;
- 
