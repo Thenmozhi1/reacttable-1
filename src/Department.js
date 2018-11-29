@@ -10,10 +10,12 @@ class Department extends React.Component {
     super(props);
     this.state = {
       dep_data: [],
-      isLoading: false
+      isLoading: false,
+      filterState: {}
     };
     //this.ClickAction = this.ClickAction.bind(this);
     //this.performAction = this.performAction.bind(this);
+    this.handleKeyPress = this.handleKeyPress.bind(this);
   }
   componentDidMount() {
     this.setState({ isLoading: true });
@@ -34,21 +36,37 @@ class Department extends React.Component {
       });
   }
 
-  // ClickAction(cellInfo) {
-  //   const data = [...this.state.dep_data];
-  //   return (
-  //     <div>
-  //       <button
-  //         contentEditable
-  //         suppressContentEditableWarning
-  //         onClick={this.performAction}
-  //       >
-  //         {data[cellInfo.index][cellInfo.column.id]}
-  //       </button>
-  //     </div>
-  //   );
-  //}
-  //performAction() {}
+  handleKeyPress(e) {
+    if (e.key === "Enter") {
+      let url = " ";
+      if (this.state.filterState.Department) {
+        url = `https://spring-employee.herokuapp.com/departments/search/bydeptname?deptname=${
+          this.state.filterState.Department
+        }`;
+      } else if (this.state.filterState.Deptid) {
+        url = `https://spring-employee.herokuapp.com/departments/search/bydeptid?deptid=${
+          this.state.filterState.Deptid
+        }`;
+      } else {
+        url = "https://spring-employee.herokuapp.com/departments";
+      }
+      axios
+        .get(url)
+        .then(json =>
+          json.data._embedded.departments.map(result => ({
+            Deptid: result.deptid,
+            Department: result.deptname,
+            DeptHead: result.depthead.empname
+          }))
+        )
+        .then(newData => {
+          this.setState({ dep_data: newData, isLoading: false });
+        })
+        .catch(function(error) {
+          console.log(error);
+        });
+    }
+  }
   render() {
     const { dep_data } = this.state;
 
@@ -56,14 +74,56 @@ class Department extends React.Component {
       <div>
         <ReactTable
           data={dep_data}
+          filterable
+          manual={true}
           columns={[
             {
               Header: "Deptid",
-              accessor: "Deptid"
+              accessor: "Deptid",
+              Filter: ({ filter, onChange }) => (
+                <input
+                  type="text"
+                  onKeyPress={this.handleKeyPress}
+                  value={
+                    this.state.filterState.Department
+                      ? this.state.filterState.Department
+                      : ""
+                  }
+                  onChange={event => {
+                    this.setState({
+                      filterState: {
+                        ...this.state.filterState,
+                        Department: event.target.value
+                      }
+                    });
+                    onChange();
+                  }}
+                />
+              )
             },
             {
               Header: "Department",
-              accessor: "Department"
+              accessor: "Department",
+              Filter: ({ filter, onChange }) => (
+                <input
+                  type="text"
+                  onKeyPress={this.handleKeyPress}
+                  value={
+                    this.state.filterState.Department
+                      ? this.state.filterState.Department
+                      : ""
+                  }
+                  onChange={event => {
+                    this.setState({
+                      filterState: {
+                        ...this.state.filterState,
+                        Department: event.target.value
+                      }
+                    });
+                    onChange();
+                  }}
+                />
+              )
             },
             {
               Header: "DeptHead",
