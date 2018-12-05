@@ -13,8 +13,7 @@ class Employee extends React.Component {
       dep_data: {},
       isLoading: false,
       filterState: {},
-      testService: {},
-      pages: 0
+      pages: null
     };
   }
 
@@ -61,13 +60,22 @@ class Employee extends React.Component {
   };
 
   fetchGridData = debounce((state, instance) => {
+    // let url = " ";
+    // const API_URL = "https://spring-employee.herokuapp.com/employees";
+    const params = { page: state.page, size: state.pageSize };
     this.setState({ isLoading: true });
     console.log(state);
     console.log(instance);
+    // if (this.state.filterState.Name)
+    //   url = `/search/byadvsearch?advsearch=( empname:${
+    //     this.state.filterState.Name
+    //   } )`;
     axios
-      .get("https://spring-employee.herokuapp.com/employees")
+      .get("https://spring-employee.herokuapp.com/employees", {
+        params
+      })
       .then(json =>
-        json.data._embedded.employees.map(result => ({
+        json.data.content.map(result => ({
           ID: result.empid,
           Name: result.empname,
           Skill: result.skill,
@@ -76,9 +84,10 @@ class Employee extends React.Component {
           City: result.city,
           Country: result.country,
           DOJ: result.doj,
-          DeptName: result.deptid.deptname,
           Designation: result.designation,
-          dep_link: result._links.deptid.href
+          DeptName: result.deptid.deptname,
+          Dep_head: result.deptid,
+          pages: result.pages
         }))
       )
 
@@ -96,13 +105,15 @@ class Employee extends React.Component {
   }, 500);
 
   render() {
-    const { emp_data, isLoading } = this.state;
+    const { emp_data, isLoading, pages } = this.state;
     const content = (
       <div>
         <ReactTable
           data={emp_data}
+          //pages={this.state.pages}
           freezeWhenExpanded={true}
           filterable
+          pages={pages}
           manual
           loading={isLoading}
           onFetchData={this.fetchGridData}
@@ -165,7 +176,7 @@ class Employee extends React.Component {
               minWidth: 110,
               Filter: ({ filter, onChange }) => (
                 <select
-                  onChange={this.handleChange(onChange, "Skill")}
+                  onChange={this.handleChange(onChange, "Designation")}
                   value={this.getFilterValueFromState("Designation", "all")}
                   style={{ width: "100%" }}
                 >
@@ -180,9 +191,9 @@ class Employee extends React.Component {
             },
             {
               Header: "DeptName",
-              accessor: "DeptName",
-              filterMethod: (filter, row) =>
-                row[filter.id].startsWith(filter.value)
+              accessor: "DeptName"
+              // filterMethod: (filter, row) =>
+              //   row[filter.id].startsWith(filter.value)
             },
             {
               Header: "Grade",
@@ -249,7 +260,7 @@ class Employee extends React.Component {
               )
             }
           ]}
-          defaultPageSize={10}
+          //defaultPageSize={10}
           className="-striped -highlight"
           getTdProps={() => {
             return {
@@ -258,36 +269,24 @@ class Employee extends React.Component {
               }
             };
           }}
-          //freezeWhenExpanded={true}
           SubComponent={rows => {
-            const { dep_data } = this.state;
-            let var2 = "";
-            let var1 = rows.original.dep_link;
-            for (let i = 0; i < var1.length; i++) {
-              if (var1[i] !== "{") {
-                var2 += var1[i];
-              }
-              if (var1[i] === "{") {
-                break;
-              }
-            }
-            const dep = dep_data[var2];
-            //debugger;
+            const dep = rows.original.Dep_head.depthead;
+
             if (dep) {
               return (
                 <div className="Posts">
                   <header>
                     <ul>
-                      <li>Dep ID : {dep.deptid}</li>
-                      <li>Dep Name : {dep.deptname}</li>
-                      <li>Dep Head : {dep.depthead.empname}</li>
-                      <li>City : {dep.depthead.city}</li>
-                      <li>Country : {dep.depthead.country}</li>
-                      <li>Designation : {dep.depthead.designation}</li>
-                      <li>DOJ : {dep.depthead.doj}</li>
-                      <li>Grade : {dep.depthead.grade}</li>
-                      <li>Salary : {dep.depthead.salary}</li>
-                      <li>Skill : {dep.depthead.skill}</li>
+                      <li>Dep ID : {rows.original.Dep_head.deptid}</li>
+                      <li>Dep Name : {rows.original.Dep_head.deptname}</li>
+                      <li>Dep Head : {dep.empname}</li>
+                      <li>City : {dep.city}</li>
+                      <li>Country : {dep.country}</li>
+                      <li>Designation : {dep.designation}</li>
+                      <li>DOJ : {dep.doj}</li>
+                      <li>Grade : {dep.grade}</li>
+                      <li>Salary : {dep.salary}</li>
+                      <li>Skill : {dep.skill}</li>
                     </ul>
                   </header>
                 </div>
@@ -296,27 +295,26 @@ class Employee extends React.Component {
               return <div className="Posts">Loading...</div>;
             }
           }}
-          getTrProps={(state, rowInfo, column, instance) => {
-            return {
-              onClick: e => {
-                let var2 = "";
-                console.log(e);
-                console.log(rowInfo);
+          // getTrProps={(state, rowInfo, column, instance) => {
+          //   return {
+          //     onClick: e => {
+          //       let var2 = "";
+          //       console.log(e);
+          //       console.log(rowInfo);
+          //       let var1 = rowInfo.row._original.dep_link;
+          //       for (let i = 0; i < var1.length; i++) {
+          //         if (var1[i] !== "{") {
+          //           var2 += var1[i];
+          //         }
+          //         if (var1[i] === "{") {
+          //           break;
+          //         }
+          //       }
 
-                let var1 = rowInfo.row._original.dep_link;
-                for (let i = 0; i < var1.length; i++) {
-                  if (var1[i] !== "{") {
-                    var2 += var1[i];
-                  }
-                  if (var1[i] === "{") {
-                    break;
-                  }
-                }
-
-                this.fetchDepartmentDetails(var2);
-              }
-            };
-          }}
+          //       this.fetchDepartmentDetails(var2);
+          //     }
+          //   };
+          // }}
         />
       </div>
     );
