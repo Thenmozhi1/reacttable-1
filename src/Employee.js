@@ -13,16 +13,16 @@ class Employee extends React.Component {
       dep_data: {},
       isLoading: false,
       filterState: {},
-      pages: null
+      pages: -1
     };
   }
 
   handleChange = (onChange, identifier) => {
-    return e => {
+    return event => {
       this.setState({
         filterState: {
           ...this.state.filterState,
-          [identifier]: e.target.value
+          [identifier]: event.target.value
         }
       });
       onChange();
@@ -43,23 +43,18 @@ class Employee extends React.Component {
     return defaultValue;
   };
 
-  fetchDepartmentDetails = var2 => {
-    if (!this.state.dep_data[var2]) {
-      axios
-        .get(var2)
-        .then(json => {
-          const data1 = json.data;
-          this.setState({
-            dep_data: { ...this.state.dep_data, [var2]: data1 }
-          });
-        })
-        .catch(function(error) {
-          console.log(error);
-        });
+  fetchDepartmentDetails = async deptId => {
+    if (!this.state.dep_data[deptId]) {
+      const json = await axios.get(deptId);
+
+      const deptData = json.data;
+      this.setState({
+        dep_data: { ...this.state.dep_data, [deptId]: deptData }
+      });
     }
   };
 
-  fetchGridData = debounce((state, instance) => {
+  fetchGridData = debounce(async (state, instance) => {
     let url = "";
     const params = {
       page: state.page,
@@ -70,53 +65,48 @@ class Employee extends React.Component {
           (state.sorted["0"].desc === false ? "desc" : "asc")
         : "empid"
     };
-    if (Object.keys(this.state.filterState).length !== 0) {
+
+    const filterKeys = Object.keys(this.state.filterState);
+    if (filterKeys.length !== 0) {
       url = "/search/byadvsearch?advsearch=( ";
-      let count = 0;
-      for (let key in this.state.filterState) {
-        if (this.state.filterState.hasOwnProperty(key)) {
-          let val = this.state.filterState[key];
-          count++;
-          if (count === 1) url += key + ":" + val;
-          else url += "and" + key + ":" + val;
-        }
-      }
+      url += filterKeys
+        .map(key => {
+          return this.state.filterState[key]
+            ? key + ":" + this.state.filterState[key]
+            : "";
+        })
+        .join(" and ");
       url += " )";
     }
-    this.setState({ isLoading: true });
-    console.log(state);
-    console.log(instance);
-    axios
-      .get("https://spring-employee.herokuapp.com/employees" + url, {
-        params
-      })
-      .then(json =>
-        json.data.content.map(result => ({
-          empid: result.empid,
-          empname: result.empname,
-          skill: result.skill,
-          salary: result.salary,
-          grade: result.grade,
-          city: result.city,
-          country: result.country,
-          doj: result.doj,
-          designation: result.designation,
-          DeptName: result.deptid.deptname,
-          Dep_head: result.deptid
-        }))
-      )
+    this.setState({
+      isLoading: true
+    });
 
-      .then(newData =>
-        this.setState({
-          ...this.state,
-          emp_data: newData,
-          isLoading: false
-        })
-      )
+    const json = await axios.get(
+      "https://spring-employee.herokuapp.com/employees" + url,
+      { params }
+    );
 
-      .catch(function(error) {
-        console.log(error);
-      });
+    const newData = json.data.content.map(result => ({
+      empid: result.empid,
+      empname: result.empname,
+      skill: result.skill,
+      salary: result.salary,
+      grade: result.grade,
+      city: result.city,
+      country: result.country,
+      doj: result.doj,
+      designation: result.designation,
+      DeptName: result.deptid.deptname,
+      Dep_head: result.deptid
+    }));
+
+    this.setState({
+      ...this.state,
+      emp_data: newData,
+      isLoading: false,
+      pages: json.data.page.totalPages
+    });
   }, 500);
 
   render() {
@@ -128,6 +118,9 @@ class Employee extends React.Component {
           freezeWhenExpanded={true}
           filterable
           pages={pages}
+          showPagination={true}
+          showPaginationTop={true}
+          showPaginationBottom={true}
           manual
           minRows={0}
           loading={isLoading}
@@ -204,14 +197,16 @@ class Employee extends React.Component {
                 <select
                   onChange={this.handleChange(onChange, "designation")}
                   value={this.getFilterValueFromState("designation", "all")}
-                  style={{ width: "100%" }}
+                  style={{
+                    width: "100%"
+                  }}
                 >
-                  <option value="all">Show all</option>
+                  <option value="all"> Show all </option>
                   <option value="protector of Asgard">
                     protector of Asgard
                   </option>
-                  <option value="Sr.manager">Sr.manager</option>
-                  <option value="developer">developer</option>
+                  <option value="Sr.manager"> Sr.manager </option>
+                  <option value="developer"> developer </option>
                 </select>
               )
             },
@@ -297,29 +292,28 @@ class Employee extends React.Component {
                 <div className="Posts">
                   <header>
                     <ul>
-                      <li>Dep ID : {rows.original.Dep_head.deptid}</li>
-                      <li>Dep Name : {rows.original.Dep_head.deptname}</li>
-                      <li>Dep Head : {dep.empname}</li>
-                      <li>City : {dep.city}</li>
-                      <li>Country : {dep.country}</li>
-                      <li>Designation : {dep.designation}</li>
-                      <li>DOJ : {dep.doj}</li>
-                      <li>Grade : {dep.grade}</li>
-                      <li>Salary : {dep.salary}</li>
-                      <li>Skill : {dep.skill}</li>
+                      <li> Dep ID: {rows.original.Dep_head.deptid} </li>
+                      <li> Dep Name: {rows.original.Dep_head.deptname} </li>
+                      <li> Dep Head: {dep.empname} </li>
+                      <li> City: {dep.city} </li>
+                      <li> Country: {dep.country} </li>
+                      <li> Designation: {dep.designation} </li>
+                      <li> DOJ: {dep.doj} </li> <li> Grade: {dep.grade} </li>
+                      <li> Salary: {dep.salary} </li>
+                      <li> Skill: {dep.skill} </li>
                     </ul>
                   </header>
                 </div>
               );
             } else {
-              return <div className="Posts">Loading...</div>;
+              return <div className="Posts"> Loading... </div>;
             }
           }}
         />
       </div>
     );
 
-    return <div>{content}</div>;
+    return <div> {content} </div>;
   }
 }
 
