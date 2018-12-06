@@ -41,15 +41,40 @@ class Department extends React.Component {
     return defaultValue;
   };
   fetchGridData = debounce((state, instance) => {
+    let url = "";
+    const params = {
+      page: state.page,
+      size: state.pageSize,
+      sort: state.sorted["0"]
+        ? state.sorted["0"].id +
+          "," +
+          (state.sorted["0"].desc === false ? "desc" : "asc")
+        : "deptid"
+    };
+    if (Object.keys(this.state.filterState).length !== 0) {
+      url = "/search/byadvsearch?advsearch=( ";
+      let count = 0;
+      for (let key in this.state.filterState) {
+        if (this.state.filterState.hasOwnProperty(key)) {
+          let val = this.state.filterState[key];
+          count++;
+          if (count === 1) url += key + ":" + val;
+          else url += "and" + key + ":" + val;
+        }
+      }
+      url += " )";
+    }
     this.setState({ isLoading: true });
     console.log(state);
     console.log(instance);
     axios
-      .get("https://spring-employee.herokuapp.com/departments")
+      .get("https://spring-employee.herokuapp.com/departments" + url, {
+        params
+      })
       .then(json =>
         json.data.content.map(result => ({
-          Deptid: result.deptid,
-          Department: result.deptname,
+          deptid: result.deptid,
+          deptname: result.deptname,
           DeptHead: result.depthead.empname
         }))
       )
@@ -75,20 +100,21 @@ class Department extends React.Component {
           data={dep_data}
           filterable
           manual
+          minRows={0}
           loading={isLoading}
           onFetchData={this.fetchGridData}
           columns={[
             {
               Header: "Deptid",
-              accessor: "Deptid",
+              accessor: "deptid",
               Filter: ({ filter, onChange }) => (
                 <input
                   type="text"
                   size="8"
-                  onChange={this.handleChange(onChange, "Deptid")}
+                  onChange={this.handleChange(onChange, "deptid")}
                   value={
-                    this.state.filterState.Deptid
-                      ? this.state.filterState.Deptid
+                    this.state.filterState.deptid
+                      ? this.state.filterState.deptid
                       : ""
                   }
                 />
@@ -96,15 +122,15 @@ class Department extends React.Component {
             },
             {
               Header: "Department",
-              accessor: "Department",
+              accessor: "deptname",
               Filter: ({ filter, onChange }) => (
                 <input
                   type="text"
                   size="8"
-                  onChange={this.handleChange(onChange, "Department")}
+                  onChange={this.handleChange(onChange, "deptname")}
                   value={
-                    this.state.filterState.Department
-                      ? this.state.filterState.Department
+                    this.state.filterState.deptname
+                      ? this.state.filterState.deptname
                       : ""
                   }
                 />
