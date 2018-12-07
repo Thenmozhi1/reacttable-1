@@ -8,12 +8,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* hide Pagination controls */
+/* hide Pagination controls
 span.-pageInfo,
 .-previous,
 .-next {
   display: none !important;
-}
+} */
 .rt-th input {
   width: 100%;
 }
